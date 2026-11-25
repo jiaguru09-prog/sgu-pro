@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Контроллер СГУ</title>
+<style>
+  :root {
+    --bg: #111214;
+    --card-dark: #17181b;
+    --panel-bg: #1f201d;
+    --accent: #cbb882;
+    --accent-border: rgba(203, 184, 130, 0.3);
+    --accent-dim: rgba(203, 184, 130, 0.14);
+    --active-btn-bg: #2e2b20;
+    --green: #4ade80;
+    --red: #f87171;
+    --text: #e4e5e9;
+    --muted: #8e9299;
+  }
+
+  /* Тема Federal Signal PA300 (Американский сине-стальной минимализм) */
+  body.unit-federal {
+    --panel-bg: #18202c;
+    --accent: #8ab4f8;
+    --accent-border: rgba(138, 180, 248, 0.32);
+    --accent-dim: rgba(138, 180, 248, 0.14);
+    --active-btn-bg: #1e2d42;
+  }
+
+  /* Тема Элина СГУ-200 (Оружейный графит + холодная сталь) */
+  body.unit-elina {
+    --panel-bg: #181b1e;
+    --accent: #7b93ab;
+    --accent-border: rgba(123, 147, 171, 0.35);
+    --accent-dim: rgba(123, 147, 171, 0.14);
+    --active-btn-bg: #202933;
+  }
+
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    padding: 14px;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .app-shell {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 4px;
+  }
+
+  .brand-header {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #eceef2;
+  }
+
+  .brand-header span {
+    color: var(--accent);
+    transition: color 0.3s ease;
+  }
+
+  .header-btns {
+    display: flex;
+    gap: 8px;
+  }
+
+  .icon-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--card-dark);
+    border: 1px solid #282a30;
+    color: #9ca3af;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .icon-btn:active {
+    transform: scale(0.94);
+  }
+
+  .icon-btn.pwr-on {
+    color: var(--green);
+    border-color: rgba(74, 222, 128, 0.35);
+    background: rgba(74, 222, 128, 0.06);
+  }
+
+  .icon-btn.pwr-off {
+    color: var(--red);
+    border-color: rgba(248, 113, 113, 0.35);
+    background: rgba(248, 113, 113, 0.06);
+  }
+
+  .icon-btn svg {
+    width: 19px;
+    height: 19px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .sheet-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 9, 11, 0.72);
+    backdrop-filter: blur(4px);
+    z-index: 90;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .sheet-backdrop.open {
+    display: block;
+    opacity: 1;
+  }
+
+  .bottom-sheet {
+    position: fixed;
+    left: 50%;
+    bottom: -100%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 410px;
+    background: #18191d;
+    border-top: 1px solid #2e3138;
+    border-radius: 24px 24px 0 0;
+    padding: 12px 18px 26px 18px;
+    box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.75);
+    z-index: 100;
+    transition: bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .bottom-sheet.open {
+    bottom: 0;
+  }
+
+  .sheet-handle {
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: #383b42;
+    margin: 0 auto 14px auto;
+  }
+
+  .sheet-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    padding-left: 4px;
+  }
+
+  .sheet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sheet-item {
+    width: 100%;
+    background: #202227;
+    border: 1px solid #2c2f36;
+    border-radius: 14px;
+    padding: 13px 15px;
+    color: #e4e5e9;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    transition: all 0.15s ease;
+  }
+
+  .sheet-item:active {
+    transform: scale(0.98);
+  }
+
+  .sheet-item.selected {
+    background: var(--active-btn-bg);
+    border-color: var(--accent);
+  }
+
+  .sheet-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .sheet-item-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .sheet-item-desc {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .theme-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+  }
+  .status-bar {
+    background: var(--card-dark);
+    border: 1px solid #25272c;
+    border-radius: 16px;
+    padding: 13px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .status-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .status-caption {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .status-value {
+    font-size: 25px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #d8dade;
+    line-height: 1.1;
+  }
+
+  .status-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+  }
+
+  .meter-caption {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .led-meter {
+    display: flex;
+    gap: 3px;
+  }
+
+  .meter-seg {
+    width: 4.5px;
+    height: 10px;
+    border-radius: 1.5px;
+    background: #2b2d32;
+    transition: 0.12s;
+  }
+
+  .meter-seg.active {
+    background: var(--accent);
+    opacity: 0.85;
+  }
+
+  .meter-bottom-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .led-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .led {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2b2d32;
+    transition: all 0.2s ease;
+  }
+
+  .led.pwr-active {
+    background: var(--green);
+    box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+  }
+
+  .led.sig-active {
+    background: var(--red);
+    box-shadow: 0 0 9px rgba(248, 113, 113, 0.6);
+  }
+
+  .meter-val {
+    font-size: 12px;
+    font-weight: 700;
+    color: #b8bcc2;
+  }
+
+  .faceplate-outer {
+    background-color: var(--panel-bg);
+    background-image: radial-gradient(rgba(0, 0, 0, 0.25) 1px, transparent 0);
+    background-size: 4px 4px;
+    border: 1.5px solid var(--accent-border);
+    border-radius: 20px;
+    padding: 6px;
+    transition: background-color 0.3s ease, border-color 0.3s ease, opacity 0.25s;
+  }
+
+  .faceplate-outer.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .faceplate-inner {
+    border: 1px solid var(--accent-dim);
+    border-radius: 15px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: border-color 0.3s ease;
+  }
+
+  .unit-layout {
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  body.unit-hazard .layout-hazard { display: flex; }
+  body.unit-federal .layout-federal { display: flex; }
+  body.unit-elina .layout-elina { display: flex; }
+
+  .plate-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .plate-badge {
+    border: 1px solid var(--accent-border);
+    border-radius: 6px;
+    padding: 4px 9px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    color: var(--accent);
+    line-height: 1.15;
+    text-transform: uppercase;
+    transition: color 0.3s ease, border-color 0.3s ease;
+  }
+
+  .plate-model {
+    font-size: 19px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    transition: color 0.3s ease;
+  }
+
+  .knobs-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .knob-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .knob-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: var(--accent);
+    text-transform: uppercase;
+    transition: color 0.3s ease;
+  }
+
+  .knob-readout {
+    font-size: 13px;
+    font-weight: 800;
+    color: #f3f4f6;
+    min-height: 16px;
+  }
+
+  .knob-dial-wrap {
+    position: relative;
+    width: 94px;
+    height: 94px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 4px 0;
+  }
+
+  .knob-ticks {
+    position: absolute;
+    inset: 2px;
+    border-radius: 50%;
+    border: 2px dashed var(--accent-border);
+    pointer-events: none;
+    transition: border-color 0.3s ease;
+  }
+
+  .rotary-knob {
+    width: 74px;
+    height: 74px;
+    border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg, #2c2e33 0deg 6deg, #191a1d 6deg 12deg);
+    padding: 6px;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55), 0 0 0 2px #141518;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.1s ease-out;
+  }
+
+  .rotary-cap {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #212327;
+    border: 1px solid #363940;
+    position: relative;
+  }
+
+  .rotary-needle {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3.5px;
+    height: 15px;
+    background: #e4e5e9;
+    border-radius: 2px;
+  }
+
+  .fed-selector-knob {
+    width: 74px;
+    height: 74px;
+    border-radius: 50%;
+    background: #1d2128;
+    border: 2px solid #394150;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.12s ease-out;
+  }
+
+  .fed-selector-bar {
+    width: 14px;
+    height: 64px;
+    background: linear-gradient(90deg, #2f3542, #4b5568, #2f3542);
+    border-radius: 5px;
+    position: relative;
+  }
+
+  .fed-selector-bar::after {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3.5px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  .knob-hint {
+    font-size: 10px;
+    color: #9ca3af;
+  }
+
+  .modes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .m-btn {
+    background: #17181b;
+    border: 1px solid #2b2d32;
+    border-radius: 10px;
+    padding: 13px 4px;
+    color: #d8dade;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .m-btn:active { transform: scale(0.97); }
+  .m-btn.active { background: var(--active-btn-bg); border-color: var(--accent); color: var(--accent); }
+  .m-btn.siren-on { background: #3d2124; border-color: #c96b6b; color: #fff; }
+
+  .tactile-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tactile-frame { border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 12px; padding: 3px; background: #151619; }
+  .tactile-btn { width: 100%; background: #969892; border: none; border-radius: 9px; padding: 15px 6px; color: #18191b; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: transform 0.05s, background 0.12s; }
+  .tactile-btn:active, .tactile-btn.pressed { transform: scale(0.98); background: #b0b2ac; }
+  .tactile-row.locked .tactile-btn { pointer-events: none; cursor: default; }
+  .tactile-title { font-size: 19px; font-weight: 800; letter-spacing: 0.5px; line-height: 1; }
+  .tactile-sub { font-size: 10px; font-weight: 600; color: #2d2e32; }
+
+  .ptt-btn { width: 100%; background: #18191c; border: 1px solid #2b2d32; border-radius: 11px; padding: 12px 16px; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: 0.15s; }
+  .ptt-btn.talking { border-color: var(--green); background: #17261f; }
+  .ptt-left { display: flex; align-items: center; gap: 12px; text-align: left; }
+  .ptt-left svg { width: 20px; height: 20px; stroke: var(--muted); fill: none; stroke-width: 1.8; }
+  .ptt-btn.talking .ptt-left svg { stroke: var(--green); }
+  .ptt-title { font-size: 14px; font-weight: 700; color: #e4e5e9; letter-spacing: 0.5px; }
+  .ptt-sub { font-size: 10px; color: var(--muted); }
+  .ptt-dot { width: 6px; height: 6px; border-radius: 50%; background: #4b4d52; }
+  .ptt-btn.talking .ptt-dot { background: var(--green); box-shadow: 0 0 8px rgba(74, 222, 128, 0.6); }
+
+  .stop-btn { width: 100%; background: #3b2324; border: 1px solid #573436; border-radius: 10px; padding: 13px; color: #ebdada; font-size: 13px; font-weight: 800; letter-spacing: 1px; cursor: pointer; transition: 0.12s; }
+  .stop-btn:active { background: #4f2f30; }
+</style>
+</head>
+<body class="unit-hazard">
+
+<div class="app-shell">
+  <div class="top-header">
+    <div class="brand-header" id="topBrandTitle">HAZARD <span>7007</span></div>
+
+    <div class="header-btns">
+      <button class="icon-btn pwr-on" id="pwrBtn" onclick="togglePower()" title="Питание">
+        <svg viewBox="0 0 24 24">
+          <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+          <line x1="12" y1="2" x2="12" y2="12"></line>
+        </svg>
+      </button>
+
+      <button class="icon-btn" onclick="openUnitSheet()" title="Выбрать пульт">
+        <svg viewBox="0 0 24 24">
+          <line x1="4" y1="7" x2="20" y2="7"></line>
+          <line x1="8" y1="7" x2="8" y2="11"></line>
+          <line x1="4" y1="15" x2="20" y2="15"></line>
+          <line x1="16" y1="15" x2="16" y2="19"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-left">
+      <div class="status-caption" id="pwrCaption">СИСТЕМА АКТИВНА</div>
+      <div class="status-value" id="mainStatusText">STANDBY</div>
+    </div>
+    <div class="status-right">
+      <div class="meter-caption">УРОВЕНЬ</div>
+      <div class="led-meter" id="ledMeter">
+        <div class="meter-seg active"></div>
+        <div class="meter-seg active"></div>
+        <div class="meter-seg active"></div>
+        <div class="meter-seg active"></div>
+        <div class="meter-seg active"></div>
+        <div class="meter-seg active"></div>
+        <div class="meter-seg active"></div>
+        <div class="meter-seg active"></div>
+        <div class="meter-seg active"></div>
+        <div class="meter-seg active"></div>
+      </div>
+      <div class="meter-bottom-row">
+        <div class="led-group">
+          <div class="led pwr-active" id="ledPwr" title="Питание"></div>
+          <div class="led" id="ledSig" title="Сигнал"></div>
+        </div>
+        <div class="meter-val" id="meterPercent">100%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="faceplate-outer" id="faceplate">
+    <div class="faceplate-inner">
+
+      <!-- 1. ПУЛЬТ PREMIER HAZARD 7007 -->
+      <div class="unit-layout layout-hazard">
+        <div class="plate-header">
+          <div class="plate-badge">PREMIER<br>HAZARD</div>
+          <div class="plate-model">7007</div>
+        </div>
+
+        <div class="knobs-row">
+          <div class="knob-unit">
+            <div class="knob-title">ГРОМКОСТЬ</div>
+            <div class="knob-readout vol-readout">100%</div>
+            <div class="knob-dial-wrap">
+              <div class="knob-ticks"></div>
+              <div class="rotary-knob vol-knob-el">
+                <div class="rotary-cap"><div class="rotary-needle"></div></div>
+              </div>
+            </div>
+            <div class="knob-hint">Тяни вверх / вниз</div>
+          </div>
+
+          <div class="knob-unit">
+            <div class="knob-title">РЕЖИМ</div>
+            <div class="knob-readout mode-readout">STANDBY</div>
+            <div class="knob-dial-wrap">
+              <div class="knob-ticks"></div>
+              <div class="rotary-knob mode-knob-el" onclick="cycleMode()">
+                <div class="rotary-cap"><div class="rotary-needle"></div></div>
+              </div>
+            </div>
+            <div class="knob-hint">Коснись или поверни</div>
+          </div>
+        </div>
+
+        <div class="modes-grid">
+          <button class="m-btn" data-mode="hilo" onclick="selectMode('hilo')">HI-LO</button>
+          <button class="m-btn" data-mode="yelp" onclick="selectMode('yelp')">YELP</button>
+          <button class="m-btn" data-mode="wail" onclick="selectMode('wail')">WAIL</button>
+          <button class="m-btn active" data-mode="standby" onclick="selectMode('standby')">STANDBY</button>
+          <button class="m-btn" data-mode="pa" onclick="selectMode('pa')">PA</button>
+          <button class="m-btn" data-mode="radio" onclick="selectMode('radio')">RADIO</button>
+        </div>
+
+        <div class="tactile-row tactile-lock-group">
+          <div class="tactile-frame">
+            <button class="tactile-btn btn-man-el">
+              <span class="tactile-title">MAN</span>
+              <span class="tactile-sub">Удержание / смена</span>
+            </button>
+          </div>
+          <div class="tactile-frame">
+            <button class="tactile-btn btn-horn-el">
+              <span class="tactile-title">HORN</span>
+              <span class="tactile-sub">Держи для сигнала</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- 2. ПУЛЬТ FEDERAL SIGNAL PA300 -->
+      <div class="unit-layout layout-federal">
+        <div class="plate-header">
+          <div class="plate-badge">FEDERAL<br>SIGNAL</div>
+          <div class="plate-model">PA300</div>
+        </div>
+
+        <div class="knobs-row">
+          <div class="knob-unit">
+            <div class="knob-title">GAIN</div>
+            <div class="knob-readout vol-readout">100%</div>
+            <div class="knob-dial-wrap">
+              <div class="knob-ticks"></div>
+              <div class="fed-selector-knob vol-knob-el">
+                <div class="fed-selector-bar"></div>
+              </div>
+            </div>
+            <div class="knob-hint">Тяни вверх / вниз</div>
+          </div>
+
+          <div class="knob-unit">
+            <div class="knob-title">SELECTOR</div>
+            <div class="knob-readout mode-readout">STANDBY</div>
+            <div class="knob-dial-wrap">
+              <div class="knob-ticks"></div>
+              <div class="fed-selector-knob mode-knob-el" onclick="cycleMode()">
+                <div class="fed-selector-bar"></div>
+              </div>
+            </div>
+            <div class="knob-hint">Поверни селектор</div>
+          </div>
+        </div>
+
+        <div class="modes-grid">
+          <button class="m-btn" data-mode="radio" onclick="selectMode('radio')">RADIO</button>
+          <button class="m-btn" data-mode="pa" onclick="selectMode('pa')">PA</button>
+          <button class="m-btn active" data-mode="standby" onclick="selectMode('standby')">STANDBY</button>
+          <button class="m-btn" data-mode="wail" onclick="selectMode('wail')">WAIL</button>
+          <button class="m-btn" data-mode="yelp" onclick="selectMode('yelp')">YELP</button>
+          <button class="m-btn" data-mode="hilo" onclick="selectMode('hilo')">HI-LO</button>
+        </div>
+
+        <div class="tactile-row tactile-lock-group">
+          <div class="tactile-frame">
+            <button class="tactile-btn btn-man-el">
+              <span class="tactile-title">MANUAL</span>
+              <span class="tactile-sub">Смена тона 1/2</span>
+            </button>
+          </div>
+          <div class="tactile-frame">
+            <button class="tactile-btn btn-horn-el">
+              <span class="tactile-title">AIR HORN</span>
+              <span class="tactile-sub">Удержание сигнала</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. ПУЛЬТ ЭЛИНА СГУ-200 -->
+      <div class="unit-layout layout-elina">
+        <div class="plate-header">
+          <div class="plate-badge">ЭЛИНА<br>СПЕЦСИГНАЛ</div>
+          <div class="plate-model">СГУ-200</div>
+        </div>
+
+        <div class="knobs-row">
+          <div class="knob-unit">
+            <div class="knob-title">УРОВЕНЬ</div>
+            <div class="knob-readout vol-readout">100%</div>
+            <div class="knob-dial-wrap">
+              <div class="knob-ticks"></div>
+              <div class="rotary-knob vol-knob-el">
+                <div class="rotary-cap"><div class="rotary-needle"></div></div>
+              </div>
+            </div>
+            <div class="knob-hint">Тяни вверх / вниз</div>
+          </div>
+
+          <div class="knob-unit">
+            <div class="knob-title">РЕЖИМ</div>
+            <div class="knob-readout mode-readout">STANDBY</div>
+            <div class="knob-dial-wrap">
+              <div class="knob-ticks"></div>
+              <div class="rotary-knob mode-knob-el" onclick="cycleMode()">
+                <div class="rotary-cap"><div class="rotary-needle"></div></div>
+              </div>
+            </div>
+            <div class="knob-hint">Коснись или поверни</div>
+          </div>
+        </div>
+
+        <div class="modes-grid">
+          <button class="m-btn" data-mode="hilo" onclick="selectMode('hilo')">ГОРН</button>
+          <button class="m-btn" data-mode="yelp" onclick="selectMode('yelp')">СИРЕНА 2</button>
+          <button class="m-btn" data-mode="wail" onclick="selectMode('wail')">СИРЕНА 1</button>
+          <button class="m-btn active" data-mode="standby" onclick="selectMode('standby')">ДЕЖУРН.</button>
+          <button class="m-btn" data-mode="pa" onclick="selectMode('pa')">ГГУ / PA</button>
+          <button class="m-btn" data-mode="radio" onclick="selectMode('radio')">РАДИО</button>
+        </div>
+
+        <div class="tactile-row tactile-lock-group">
+          <div class="tactile-frame">
+            <button class="tactile-btn btn-man-el">
+              <span class="tactile-title">ТОН 1/2</span>
+              <span class="tactile-sub">Смена подрежима</span>
+            </button>
+          </div>
+          <div class="tactile-frame">
+            <button class="tactile-btn btn-horn-el">
+              <span class="tactile-title">КРЯ</span>
+              <span class="tactile-sub">Держи для сигнала</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button class="ptt-btn" id="btn-ptt">
+        <div class="ptt-left">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+          <div>
+            <div class="ptt-title">РАЦИЯ</div>
+            <div class="ptt-sub">Удерживай, чтобы говорить</div>
+          </div>
+        </div>
+        <div class="ptt-dot"></div>
+      </button>
+
+      <button class="stop-btn" onclick="emergencyStop()">СТОП</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="sheetBackdrop" onclick="closeUnitSheet()"></div>
+<div class="bottom-sheet" id="unitSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">Модель спецсигнала</div>
+  <div class="sheet-list">
+    <button class="sheet-item selected" onclick="chooseUnit('hazard', 'HAZARD', '7007', this)">
+      <div class="sheet-item-info">
+        <div class="sheet-item-name">Premier Hazard 7007</div>
+        <div class="sheet-item-desc">Британский стандарт • Оливковое золото</div>
+      </div>
+      <div class="theme-swatch" style="background: #cbb882;"></div>
+    </button>
+
+    <button class="sheet-item" onclick="chooseUnit('federal', 'FEDERAL', 'PA300', this)">
+      <div class="sheet-item-info">
+        <div class="sheet-item-name">Federal Signal PA300</div>
+        <div class="sheet-item-desc">Американский блок • Сине-стальной сланец</div>
+      </div>
+      <div class="theme-swatch" style="background: #8ab4f8;"></div>
+    </button>
+
+    <button class="sheet-item" onclick="chooseUnit('elina', 'ЭЛИНА', 'СГУ-200', this)">
+      <div class="sheet-item-info">
+        <div class="sheet-item-name">Элина СГУ-200</div>
+        <div class="sheet-item-desc">Российский блок • Оружейная сталь</div>
+      </div>
+      <div class="theme-swatch" style="background: #7b93ab;"></div>
+    </button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
